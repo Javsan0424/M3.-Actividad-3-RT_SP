@@ -1,0 +1,8 @@
+Preguntas de reflexión
+¿Qué ventajas tiene usar WebSocket vs REST polling? Websocket tiene una conexión mutua lo que hace que sea más rápido en teoría la parte de la mensajería ya que en polling es un proceso unilateral del front pidiendo info al back constantemente por lo que no lo obtienes al momento si no cuando la función se ejecute y conecte con el backend.
+
+¿Qué pasaría si el servidor se reinicia? ¿Qué datos se pierden? En este caso los datos que no estén da base. Ya que al no contar con una base de datos todo lo que se agregue durante la sesión se perderá si se apaga el servidor.
+
+¿Cómo diferencia el servidor quién envía cada cambio? En este momento no hay una manera de diferenciar que esté establecida, pero hay métodos como autenticación o por ip.
+
+¿Por qué el frontend necesita hacer GET inicial + WebSocket y no solo WebSocket? para establecer esa conexión y de esa manera puedes hacer las actualizaciones constantes o en vivo contra el get normal de polling. También sirve para asegurar que no se caiga el Websocket inicialmente.
