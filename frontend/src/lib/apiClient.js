@@ -1,6 +1,6 @@
 import Stomp from "stompjs";
 
-const API_URL = "http://10.22.172.192:8080";
+const API_URL = "http://77.42.32.142:3001";
 
 let stompClient = null;
 

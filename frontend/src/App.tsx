@@ -1,4 +1,8 @@
 import { useEffect, useRef, useState } from "react";
+import { withError } from "./lib/withErrors";
+import { Match, MatchEvent } from "./types";
+import EventFeed from "./components/EventFeed";
+
 import {
   fetchMatch,
   fetchEvents,
@@ -8,21 +12,22 @@ import {
   subscribeToUpdates,
 } from "./lib/apiClient";
 import Scoreboard from "./components/Scoreboard";
-import EventFeed from "./components/EventFeed";
 import NewEventForm from "./components/NewEventForm";
 import ToastContainer from "./components/ToastContainer";
 
-export default function App() {
-  const [match, setMatch] = useState(null);
-  const [events, setEvents] = useState([]);
-  const [error, setError] = useState(null);
-  const [wsStatus, setWsStatus] = useState("conectando...");
-  
-  // [C] Estado para los Toasts y referencia para filtrar eventos propios
-  const [toasts, setToasts] = useState([]);
-  const localEventIds = useRef(new Set());
+export interface Toast extends MatchEvent {
+  toastId: number;
+}
 
-  // ── Carga inicial ──────────────────────────────────────────
+export default function App() {
+  const [match, setMatch] = useState<Match | null>(null);
+  const [events, setEvents] = useState<MatchEvent[]>([]);
+  const [error, setError] = useState<string | null>(null);
+  const [wsStatus, setWsStatus] = useState<string>("conectando...");
+  
+  const [toasts, setToasts] = useState<Toast[]>([]);
+  const localEventIds = useRef<Set<string>>(new Set());
+
   useEffect(() => {
     async function loadData() {
       try {
@@ -31,46 +36,42 @@ export default function App() {
 
         const eventsData = await fetchEvents();
         setEvents(eventsData);
-      } catch (err) {
-        setError(err.message);
+      } catch (err: unknown) {
+        setError(err instanceof Error ? err.message : "Ocurrió un error inesperado");
       }
     }
     loadData();
   }, []);
 
-  // ── Suscripción WebSocket ──────────────────────────────────
   useEffect(() => {
-    let cleanup;
+    let cleanup: (() => void) | null = null;
 
     async function connectWs() {
       try {
         cleanup = await subscribeToUpdates(
-          (match) => setMatch(match),
-          (event) => {
-            // Actualizar feed
+          (matchData: Match) => setMatch(matchData),
+          (event: MatchEvent) => {
             setEvents((prev) => {
               if (prev.some((e) => e.id === event.id)) return prev;
               return [event, ...prev];
             });
 
-            // [C] Lógica del Toast: Filtrar si es evento propio
             if (localEventIds.current.has(event.id)) {
-              localEventIds.current.delete(event.id); // Es nuestro, limpiamos el Set
+              localEventIds.current.delete(event.id);
             } else {
-              // Es de otro cliente, mostrar notificación
               setToasts((prev) => [
                 ...prev,
                 { ...event, toastId: Date.now() },
               ]);
             }
           },
-          (err) => {
+          (err: Error) => {
             console.error("WebSocket error:", err);
             setError("Error en conexión WebSocket");
           }
         );
         setWsStatus("conectado");
-      } catch (err) {
+      } catch (err: unknown) {
         setError("No se pudo establecer conexión WebSocket");
       }
     }
@@ -82,39 +83,37 @@ export default function App() {
     };
   }, []);
 
-  // ── Acciones ───────────────────────────────────────────────
-  async function handleAddEvent(eventType, minute, description) {
-    try {
-      // Devolvemos el evento para capturar el ID en el formulario
-      const event = await addEvent(eventType, minute, description);
-      return event;
-    } catch (err) {
-      setError(err.message);
-    }
+  async function handleAddEvent(
+  eventType: string,
+  minute: number | null,
+  description: string | null,
+  ) {
+  await withError(() => addEvent(eventType, minute, description), setError);
   }
 
   async function goalHome() {
     if (!match) return;
-    try {
-      await updateScore(match.id, match.homeScore + 1, match.awayScore);
-    } catch (err) { setError(err.message); }
-  }
+    await withError(
+    () => updateScore(match.id, match.homeScore + 1, match.awayScore),
+    setError,
+    );
+    }
 
   async function goalAway() {
     if (!match) return;
-    try {
-      await updateScore(match.id, match.homeScore, match.awayScore + 1);
-    } catch (err) { setError(err.message); }
-  }
-
-  async function handleReset() {
+    await withError(
+    () => updateScore(match.id, match.homeScore, match.awayScore + 1),
+    setError,
+    );
+    }
+  
+    async function handleReset() {
     if (!match) return;
-    try {
-      await resetScore(match.id);
-    } catch (err) { setError(err.message); }
-  }
+    await withError(() => resetScore(match.id), setError);
+    }
 
-  // ── Render ─────────────────────────────────────────────────
+    
+
   if (error) {
     return (
       <div style={{ padding: "2rem", color: "#c0392b", fontFamily: "sans-serif" }}>
@@ -133,10 +132,9 @@ export default function App() {
 
   return (
     <div style={{ maxWidth: "760px", margin: "2rem auto", padding: "0 1rem", fontFamily: "sans-serif" }}>
-      {/* Contenedor de Toasts */}
       <ToastContainer
         toasts={toasts}
-        onDismiss={(id) => setToasts((prev) => prev.filter((t) => t.toastId !== id))}
+        onDismiss={(id: number) => setToasts((prev) => prev.filter((t) => t.toastId !== id))}
       />
 
       <h1 style={{ fontSize: "1.1rem", color: "#888", marginBottom: "0.5rem", textTransform: "uppercase" }}>
@@ -152,7 +150,7 @@ export default function App() {
 
       <NewEventForm 
         onAddEvent={handleAddEvent} 
-        onEventCreated={(id) => localEventIds.current.add(id)} // [C] Guardar ID propio
+        onEventCreated={(id: string) => localEventIds.current.add(id)}
       />
 
       <EventFeed events={events} />

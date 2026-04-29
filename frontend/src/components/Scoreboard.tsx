@@ -1,5 +1,28 @@
-export default function Scoreboard({ match, onGoalHome, onGoalAway, onReset }) {
+import React, { CSSProperties } from 'react';
+import { Match } from "../types";
+
+interface Props {
+match: Match;
+onGoalHome: () => void;
+onGoalAway: () => void;
+onReset: () => void;
+}
+
+interface ScoreboardProps {
+  match: Match;
+  onGoalHome: () => void; 
+  onGoalAway: () => void;
+  onReset: () => void;
+}
+
+export default function Scoreboard({ 
+  match, 
+  onGoalHome, 
+  onGoalAway, 
+  onReset 
+}: ScoreboardProps) {
   return (
+    /* CORREGIDO: Usamos style={styles.card} en lugar de className */
     <div style={styles.card}>
       <p style={styles.matchName}>{match.matchName}</p>
 
@@ -11,14 +34,15 @@ export default function Scoreboard({ match, onGoalHome, onGoalAway, onReset }) {
         Última actualización: {new Date(match.updatedAt).toLocaleTimeString()}
       </p>
 
+      {/* CORREGIDO: Usamos style={styles.buttons} */}
       <div style={styles.buttons}>
-        <button onClick={onGoalHome} style={btn("#27ae60")}>
+        <button onClick={onGoalHome} style={btn("#e94560")}>
           +1 Local
         </button>
-        <button onClick={onGoalAway} style={btn("#2980b9")}>
+        <button onClick={onGoalAway} style={btn("#e94560")}>
           +1 Visitante
         </button>
-        <button onClick={onReset} style={btn("#c0392b")}>
+        <button onClick={onReset} style={btn("#444")}>
           Reiniciar
         </button>
       </div>
@@ -26,7 +50,8 @@ export default function Scoreboard({ match, onGoalHome, onGoalAway, onReset }) {
   );
 }
 
-function btn(background) {
+/* TIPADO: Especificamos que la función devuelve CSSProperties */
+function btn(background: string): CSSProperties {
   return {
     background,
     color: "white",
@@ -39,7 +64,8 @@ function btn(background) {
   };
 }
 
-const styles = {
+/* TIPADO: Usamos Record<string, CSSProperties> para que TS valide los estilos */
+const styles: Record<string, CSSProperties> = {
   card: {
     background: "#1a1a2e",
     color: "white",
